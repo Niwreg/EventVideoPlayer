@@ -1,0 +1,123 @@
+<html>
+<head>
+<style>
+body {
+background-color: black;
+}
+button {
+        background-color: black;
+        border: 1px white solid;
+        color: white;
+        padding: 15px 32px;
+        text-align: center;
+	width: 100%;
+        display: inline-block;
+        font-size: 35pt;
+        border-radius: 8px;
+	margin: 15px;
+}
+li {
+	padding-bottom: 40px;
+}
+.unchecked {
+	background-color: dimgray;
+	opacity: 0.5;
+}
+.itemok {
+	background-color: black;
+	opacity: 1;
+}
+.itemnok {
+	background-color: crimson;
+}
+.itemplayed {
+	background-color: lightgreen;
+}
+.itemplaying {
+	background-color: goldenrod;
+}
+.itemplayednok {
+	background-color: indigo;
+}
+</style>
+<script>
+// add socket io
+var playlist = {};
+var currentplaylistid = 0;
+var mainPlayerConnected = false;
+var PlaylistLoaded = false;
+var xmlhttp = new XMLHttpRequest();
+xmlhttp.open('GET' , '//192.168.3.10/playlist/playlist.json', true);
+xmlhttp.onreadystatechange = function () {
+	if (xmlhttp.readyState == 4){
+		if (xmlhttp.status == 200) {
+			//console.log (xmlhttp.responseText);
+			var obj = JSON.parse (xmlhttp.responseText);
+			//console.log(obj);
+			playlist = obj;
+			PlaylistLoaded = true;
+			for (i=0; i < playlist.Items.length; i++) {
+				var node = document.createElement("LI");
+				/*if ((i == 0) || playlist.Items[i].type) {
+				node.innerHTML = "<button class=\"checked\" id=\"item" + i + "\" onclick=\"playLoaded('" + i + "',true)\">Play: " + playlist.Items[i].name + "</button>";
+				} else {*/
+				node.innerHTML = "<button class=\"checked\" id=\"item" + i + "\" onclick=\"sendPreparePlay('" + i + "',true)\">Play: " + playlist.Items[i].name + "</button>";
+				//}
+				//node.appendChild(textnode);
+				document.getElementById("playlistUl").appendChild(node);
+			}
+			
+			/*obj.Items.forEach(function(item){
+ 				console.log(item.name);
+ 				console.log(item.file);
+			});*/
+			
+		} 
+	}
+};
+xmlhttp.send(null);
+function sendPreparePlay(prepId,autoplay=false) {
+        socket.emit('prepare-play', {id: prepId, duration:playlist.Items[prepId].duration, name: playlist.Items[prepId].name, type: playlist.Items[prepId].type, placeholder: playlist.Items[prepId].placeholder, file: playlist.Items[prepId].file, play: autoplay});
+	if (autoplay) {
+		currentplaylistid = prepId;
+	}
+}
+function playLoaded(playId,autoplay=false) {
+	socket.emit('play-loaded-item', {id: playId, type: playlist.Items[playId].type});
+	currentplaylistid = playId;
+}
+</script>
+</head>
+<body>
+<div id="Playlist"><ul id="playlistUl"></ul></div>
+<script src="assets/js/socket.io.js"></script>
+<script>
+console.log(window.location.host + ":3000/");
+var socket = io("\\" + window.location.host + ":3000/");
+//socket.emit('send-type', 'RemoteControl');
+socket.on('connect', () => {
+	socket.emit('send-type', 'RemoteControl');
+});
+socket.on('play-ended', (playended) => {
+	if (playended.ended) {
+		document.getElementById("item" + playended.id).className = "itemplayed";
+	} else {
+		document.getElementById("item" + playended.id).className = "itemplayednok";
+	}
+	document.getElementById("item" + (+playended.id + 1)).scrollIntoView();		
+	
+        //console.log(playended);   
+});
+socket.on('play-started', (playstarted) => {
+        document.getElementById("item" + playstarted.id).className = "itemplaying";
+	console.log(playstarted);
+        
+});
+socket.on('mainplayerconnected', (main) => {
+	//sendPreparePlay(currentplaylistid);
+	//mainPlayerConnected = true;
+});
+</script>
+</body>
+</html>
+

@@ -1,0 +1,182 @@
+<html>
+<head>
+<title>EventPlayer</title>
+<style type="text/css">
+body, html {
+	background-color: black;
+	width: 100%;
+	height: 100%;
+}
+#main {
+	position: relative;
+        width: 100%;
+        height: 100%;
+	margin: 0px;
+}
+.center {
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%, -50%);
+}
+.ontop {
+	z-index: 10;
+}
+#firstplay {
+	background-color: black;
+	border: 1px white solid;
+	color: white;
+	padding: 15px 32px;
+	text-align: center;
+	display: inline-block;
+	font-size: 16pt;
+	border-radius: 8px;
+}
+#EventPlayer1 {
+opacity: 0;
+transition: opacity 0.7s ease-in;
+-webkit-transition: opacity 0.7s ease-in;
+-moz-transition: opacity 0.7s ease-in;
+-o-transition: opacity 0.7s ease-in;
+}
+#EventViewer1 {
+opacity: 0;
+max-width: 100%;
+max-heigth: 100%;
+display: block;
+transition: opacity 0.7s ease-in;
+-webkit-transition: opacity 0.7s ease-in;
+-moz-transition: opacity 0.7s ease-in;
+-o-transition: opacity 0.7s ease-in;
+}
+
+.active{
+opacity: 1;
+transition: opacity 0.7s ease-in;
+-webkit-transition: opacity 0.7s ease-in;
+-moz-transition: opacity 0.7s ease-in;
+-o-transition: opacity 0.7s ease-in;
+}
+
+</style>
+</head>
+<body>
+<div id="main">
+
+	<button id="firstplay" class="center ontop" onclick="firstPlay()">Druk hier om te verbinden</button>
+	<video class="center" onended="videoEnded()" data-id="" onplay="videoPlaying()" width="768" id="EventPlayer1">
+		<source  src="assets/video/welkom.mp4">
+	</video>
+	<img id="EventViewer1" class="center" data-duration="" data-id="" src=""/>
+</div>
+<script src="assets/js/socket.io.js"></script>
+<script>
+var myVideo = document.getElementById("EventPlayer1");
+if (window.location.search == "?main") {
+	var mainPlayer = true;
+}
+var activeElement = "";
+function firstPlay() {
+	document.getElementById("firstplay").style.display = "none";
+	PlayPause();
+}
+
+function PlayPause() {
+   if (myVideo.paused) { 
+      myVideo.play();
+   }
+} 
+function videoEnded() {
+	document.getElementById('EventPlayer1').webkitExitFullScreen();
+	if (document.getElementById("EventPlayer1").src == "") {
+		setTimeout(() => {
+        		document.getElementById('EventPlayer1').classList.toggle('active');
+			document.getElementById('EventPlayer1').style.opacity = 0;
+		}, 4000);
+	} else {
+                document.getElementById('EventPlayer1').classList.toggle('active');
+                document.getElementById('EventPlayer1').style.opacity = 0;
+	}
+	sendEnded(document.getElementById('EventPlayer1').getAttribute("data-id"),"video",true);
+}
+
+function sendEnded(endid, endtype , endstate) {
+	if (mainPlayer) {
+		if (endid != "") {
+			socket.emit('play-ended', { id: endid , type: endtype ,ended: endstate});
+		}
+	}
+}
+
+function videoPlaying() {
+	document.getElementById('EventPlayer1').classList.toggle('active');
+	document.getElementById('EventPlayer1').style.opacity = 1;
+	//document.getElementById('EventPlayer1').classList.add("fadein");
+}
+
+function hideImage() {
+        document.getElementById('EventViewer1').classList.toggle('active');
+        document.getElementById('EventViewer1').style.opacity = 0;
+	sendEnded(document.getElementById('EventViewer1').getAttribute("data-id"),"image",true);
+}
+
+function showImage(){
+        document.getElementById('EventViewer1').classList.toggle('active');
+        document.getElementById('EventViewer1').style.opacity = 1;
+}
+
+console.log(window.location.host + ":3000/");
+var socket = io("\\" + window.location.host + ":3000/");
+
+socket.on('connect', () => {
+	if (window.location.search == "?main") {
+        	socket.emit('send-type', 'MainEventPlayer');
+	} else {
+		socket.emit('send-type', 'EventPlayer');
+	}
+});
+
+socket.on('prep-play', (prepPlay) => {
+	if (prepPlay.type == "video") {
+		var video = document.getElementById("EventPlayer1");
+		video.src = prepPlay.file;
+		video.setAttribute("data-id", prepPlay.id);
+		//document.getElementById("EventPlayer1").load;
+		if (prepPlay.play) {
+			if (activeElement == "image") {
+				hideImage();
+			}
+			PlayPause();
+		}
+		activeElement = "video";
+	} else if (prepPlay.type == "image") {
+		if (activeElement == "image") {
+			hideImage();
+		}
+		var image = document.getElementById("EventViewer1");
+		image.src = prepPlay.file;
+		image.setAttribute("data-id", prepPlay.id);
+		activeElement = "image";
+		if (prepPlay.duration == "-1" || prepPlay.duration == "") {
+			setTimeout(() => { sendEnded(prepPlay.id ,"image",false); }, 5000);
+			image.setAttribute("data-duration", "-1");
+		} else {
+			image.setAttribute("data-duration", prepPlay.duration);
+		}
+		if (prepPlay.play) {
+			showImage();
+			if (image.getAttribute('data-duration') != "-1") {
+				setTimeout(() => { hideImage(); }, image.getAttribute('data-duration'));
+			}
+		}		
+	} 
+	console.log(activeElement);
+});
+socket.on('play-loaded-item', (playLoaded) => {
+	console.log(playLoaded);
+	PlayPause();
+});
+
+</script>
+</body>
+</html>
