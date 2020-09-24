@@ -1,0 +1,16 @@
+{
+"Items": [
+{"name":"Title of playlist item" ,
+ "type":"video",
+ "placeholder":"",
+ "duration":"",
+ "file":""
+},
+{"name":"Title of playlist item",
+ "type":"image",
+ "placeholder":"",
+ "duration":"",
+ "file":""
+}]
+}
+
